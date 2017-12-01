@@ -14,6 +14,8 @@
 
 using namespace std;
 
+#define DEBUG
+
 // for convenience
 using json = nlohmann::json;
 
@@ -194,6 +196,15 @@ class Path {
             if( n<=path.size() ) {
                 path.resize( path.size() - n );
             }
+#ifdef DEBUG
+          cout << "\nremaining: ";
+          for( auto d : path ) {
+            cout << "[" << d.x << "," << d.y << "],";
+          }
+          cout << "\n";
+            
+#endif
+          
         }
 
         Point getCurrent() {
@@ -207,12 +218,12 @@ class Path {
         }
 
         /* advanced d distance over the norm of the path starting at idx */
-        void advance(double d) {
+        void advanceTo(double d) {
             if(path.size()<2) {
                 cout << "Path::advance. path is less than 2\n";
             }
 
-            double accum = 0, norm;
+            double norm;
             for( int i=idx; accum<d && idx<(path.size()-1); i++ ) {
                 double xx = path[i+1].x - path[i].x;
                 double yy = path[i+1].y - path[i].y;
@@ -222,12 +233,13 @@ class Path {
             }
 
             // we choose the point before the distance overflow.
-            idx--;
-            idx = std::max(idx,  0); 
+            //idx--;
+            //idx = std::max(idx,  0);
         }
 
     private:
         int idx;
+        double accum = 0;
 };
 
 class PathSimulator {
@@ -251,7 +263,7 @@ class PathSimulator {
         // calculates path in x,y car coordinates
         //
         Path calculatePath(double car_x, double car_y, double car_yaw, int dest_lane ) {
-            int spline_points = 5000;
+            int spline_points = 50000;
             Path path;
             tk::spline s = computeSpline( car_x, car_y, car_yaw, dest_lane );
 
@@ -290,7 +302,7 @@ class PathSimulator {
                 ptsy.push_back(prev_car_y);
                 ptsy.push_back(car_y);
 
-                spline_validity[0] = car_x; 
+
             }
             else {
                 ref_x = historian[prev_size-1].x;
@@ -303,7 +315,7 @@ class PathSimulator {
                 //use two points that make the path tangent to the previous path's endpoint
                 ptsx.push_back(ref_x_prev);
                 ptsx.push_back(ref_x);
-                spline_validity[0] = ref_x; 
+     
 
                 ptsy.push_back(ref_y_prev);
                 ptsy.push_back(ref_y);
@@ -317,7 +329,7 @@ class PathSimulator {
             ptsx.push_back(next_wp0[0]);
             ptsx.push_back(next_wp1[0]);
             ptsx.push_back(next_wp2[0]);
-            spline_validity[1] = next_wp2[0]; 
+
 
             ptsy.push_back(next_wp0[1]);
             ptsy.push_back(next_wp1[1]);
@@ -333,6 +345,10 @@ class PathSimulator {
                 ptsx[i] = (shift_x * cos(0-ref_yaw) - shift_y * sin(0-ref_yaw));
                 ptsy[i] = (shift_x * sin(0-ref_yaw) + shift_y * cos(0-ref_yaw));
             }
+          
+          spline_validity[0] = ptsx[0];
+          spline_validity[1] = ptsx[ptsx.size()-1];
+          
 
 
             // create a spline
@@ -391,9 +407,13 @@ class PathSimulator {
         // returns a path in car coordinates
         Path simulate(int destlane) {
             Path final_path;
-            
+          
+            cout << "\n";
             // Calculate tentative fine path
             Path p = calculatePath(car_x, car_y, car_yaw, destlane);
+            double vt1, v0, distance=0;
+            v0 = mph_to_metersps( car_speed );
+          
             for( int i=0; i<steps; i++ ) {
                 // sf.estimateCarsPositions(i);
                  // checkColisions(); // false -> invalid path
@@ -401,19 +421,23 @@ class PathSimulator {
                 // if car ahead decelerate to match speed
 
                 double carahead_speed = 0;
-                double v0 = mph_to_metersps( car_speed );
+              
                 if ( isCarAhead( destlane, i, carahead_speed ) && carahead_speed < speedmax  ) {
-                    double vt1 = v0 - accmax*step_s; 
+                    cout << "car ahead ->";
+                    vt1 = v0 - accmax*step_s;
                     vt1 = std::max( vt1, carahead_speed ); // in case car is stopped
-                    double d = vt1*step_s; // distance traveled at vt1
-                    p.advance(d);
                 } else {
                     // no car ahead accelerate and clip
-                    double vt1 = v0 + accmax*step_s;
-                    vt1 = std::max( vt1, speedmax );
-                    double d = vt1*step_s; // distance traveled
-                    p.advance(d);
+                    vt1 = v0 + accmax*step_s;
+                    vt1 = std::min( vt1, speedmax );
+
                 }
+                double d = vt1*step_s; // distance traveled
+                distance += d;
+                p.advanceTo(distance);
+                v0 = vt1;
+              
+              cout << v0 << " ";
 
                 final_path.add(p.getCurrent());
             }
@@ -432,7 +456,9 @@ class PathSimulator {
 
             // removed previously points that were not used from the historian
             if( previously_unused > 0 ) {
+              cout << previously_unused << "\n";
                 historian.removeLastN( previously_unused );
+              
             }
         }
 
@@ -465,9 +491,9 @@ class PathSimulator {
         Path historian;
 
     private:
-        double accmax = 6.95; // max acceleration is 10 m/s^2
+        double accmax = 9.95; // max acceleration is 10 m/s^2
         double step_s = 0.02; 
-        double speedmax = mph_to_metersps( 40.9 ); // m/s 
+        double speedmax = mph_to_metersps( 49.7 ); // m/s
 
         int steps;
 
@@ -498,8 +524,8 @@ int main() {
   vector<double> map_waypoints_dy;
 
   // Waypoint map to read from
-  // string map_file_ = "../data/highway_map.csv";
-  string map_file_ = "../data/highway_map_bosch1.csv";
+   string map_file_ = "../data/highway_map.csv";
+  //string map_file_ = "../data/highway_map_bosch1.csv";
   // The max s value before wrapping around the track back to 0
   double max_s = 6945.554;
 
