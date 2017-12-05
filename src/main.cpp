@@ -14,7 +14,7 @@
 
 using namespace std;
 
-#define DEBUG
+#undef DEBUG
 
 // for convenience
 using json = nlohmann::json;
@@ -196,6 +196,9 @@ class Path {
             path.push_back(p);
         }
 
+        int getIndex(){ return idx; }
+        void setIndex(int idx) { this->idx = idx < 0 ? 0 : idx; }
+
         void removeLastN( int n ) {
             if( n<=path.size() ) {
                 path.resize( path.size() - n );
@@ -267,7 +270,7 @@ class PathSimulator {
         // calculates path in x,y car coordinates
         //
         Path calculatePath(double car_x, double car_y, double car_yaw, int dest_lane ) {
-            int spline_points = 50000;
+            int spline_points = 500;
             Path path;
             tk::spline s = computeSpline( car_x, car_y, car_yaw, dest_lane );
 
@@ -350,8 +353,9 @@ class PathSimulator {
                 ptsy[i] = (shift_x * sin(0-ref_yaw) + shift_y * cos(0-ref_yaw));
             }
           
-          spline_validity[0] = ptsx[0];
-          spline_validity[1] = ptsx[ptsx.size()-1];
+            // validity starts at ptsx[1]
+            spline_validity[0] = ptsx[1];
+            spline_validity[1] = ptsx[ptsx.size()-1];
           
 
 
@@ -414,9 +418,14 @@ class PathSimulator {
           
             cout << "\n";
             // Calculate tentative fine path
-            Path p = calculatePath(car_x, car_y, car_yaw, destlane);
+            // Path p = calculatePath(car_x, car_y, car_yaw, destlane);
+            tk::spline s = computeSpline( car_x, car_y, car_yaw, destlane );
+
             double vt1, v0, distance=0;
+            double x0 = spline_validity[0];
             v0 = mph_to_metersps( car_speed );
+
+            steps = 50 - (historian.size() - historian.getIndex());
           
             for( int i=0; i<steps; i++ ) {
                 // sf.estimateCarsPositions(i);
@@ -437,13 +446,14 @@ class PathSimulator {
 
                 }
                 double d = vt1*step_s; // distance traveled
-                distance += d;
-                p.advanceTo(distance);
-                v0 = vt1;
-              
-              cout << v0 << " ";
+                distance += d; // we ignore lateral moves
 
-                final_path.add(p.getCurrent());
+                //p.advanceTo(distance);
+                v0 = vt1;
+
+              
+                // i=0 matches the 20ms step after the last iteration
+                final_path.add( x0+distance, s(x0+distance) );
             }
 
             return final_path;
@@ -458,18 +468,20 @@ class PathSimulator {
             this->car_speed = car_speed;
             this->sensor_fusion = sf;
 
-            // removed previously points that were not used from the historian
-            if( previously_unused > 0 ) {
-              cout << previously_unused << "\n";
-                historian.removeLastN( previously_unused );
-              
-            }
+            historian.setIndex( historian.size() - previously_unused );
+            
         }
 
         // calculates the next 50 x,y points in map coordinates
         void getNextPoints( vector<double> &next_x_vals, vector<double> &next_y_vals ) {
             int lane = 0;
             Path path = simulate(lane);
+
+
+            int hs = historian.getIndex();
+            if(hs>=3) {
+                printf("historian_pre-post[%d]: %f,%f,%f - ", hs, historian[hs-3].x, historian[hs-2].x, historian[hs-1].x);  
+            }
 
             for( int i=0; i<path.size(); i++ ) {
                 double x_ref = path[i].x;
@@ -489,6 +501,9 @@ class PathSimulator {
 
                 historian.add(x_point, y_point);
             }
+
+            printf("%f,%f,%f\n", historian[hs].x, historian[hs+1].x, historian[hs+2].x);  
+
         }
 
 
@@ -497,7 +512,7 @@ class PathSimulator {
     private:
         double accmax = 9.95; // max acceleration is 10 m/s^2
         double step_s = 0.02; 
-        double speedmax = mph_to_metersps( 49.7 ); // m/s
+        double speedmax = mph_to_metersps( 49.5 ); // m/s
 
         int steps;
 
