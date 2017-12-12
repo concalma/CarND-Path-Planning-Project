@@ -524,7 +524,7 @@ class PathPlanner {
             double cost = 0;
             cost += target_lane_candidate!=CURRENT ? 0.8 : 1 ; // penalize lane change a bit
 
-            double sdiff = ret.path.s_vals[120]-ret.path.s_vals[0];
+            double sdiff = ret.path.s_vals[1000]-ret.path.s_vals[0];
             ret.cost = 1/ (sdiff*cost);  // the higher the car_s, the lower the cost
 
 
