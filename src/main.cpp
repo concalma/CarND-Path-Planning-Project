@@ -221,7 +221,7 @@ class PathFinder {
                 
             }
 
-            printf("l,a,r: %d, %d, %d. lane: %d\n", si.sense_left, si.sense_ahead, si.sense_right, current_lane);
+            printf("sense: left,ahead,right: %d, %d, %d. lane: %d\n", si.sense_left, si.sense_ahead, si.sense_right, current_lane);
             return si;
         } 
 
@@ -406,42 +406,9 @@ int main() {
             PathFinder pf;
 
             SenseInfo si = pf.sense( sensor_fusion, prev_size, lane, car_s );
-
-
             BehaviourInfo bi = pf.behave( si, lane, ref_vel );
+            lane = bi.dest_lane;
 
-            /*
-
-            bool car_ahead = si.sense_ahead;
-            bool car_left = si.sense_left;
-            bool car_righ = si.sense_right;
-
-            // Behavior : Let's see what to do.
-            double speed_diff = 0;
-            const double MAX_SPEED = 49.5;
-            const double MAX_ACC = .224;
-            if ( car_ahead ) { // Car ahead
-              if ( !car_left && lane > 0 ) {
-                // if there is no car left and there is a left lane.
-                lane--; // Change lane left.
-              } else if ( !car_righ && lane != 2 ){
-                // if there is no car right and there is a right lane.
-                lane++; // Change lane right.
-              } else {
-                speed_diff -= MAX_ACC;
-              }
-            } else {
-              if ( lane != 1 ) { // if we are not on the center lane.
-                if ( ( lane == 0 && !car_righ ) || ( lane == 2 && !car_left ) ) {
-                  lane = 1; // Back to center.
-                }
-              }
-              if ( ref_vel < MAX_SPEED ) {
-                speed_diff += MAX_ACC;
-              }
-            }
-
-            */
 
           	vector<double> ptsx;
             vector<double> ptsy;
