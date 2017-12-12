@@ -11,7 +11,7 @@ The project involves creating a path planner for highway driving, with constrain
 Implemented in the PathFinder::sense method, this code will use the sensor fusion information to determine the car/obstacles around the car and pass the information along to behavioural phase through the BehaviourInfo class. The goal of the sensing routines is to identify obstacles on the `left`, `ahead` and `right` of the current lane. 
 
 ## Behavior
-Implemented in the PathFinder::behave method, behave takes decisions of when to change lanes and/or speed depending on the sensing information. Thecode uses the maximum constrains for acceleration and speed for every step of the simulator to ensure we are not violating the bounds. It also has a preference to stay in the center lane, although there's some experimentation for lane keeping.
+Implemented in the PathFinder::behave method, behave takes decisions of when to change lanes and/or speed depending on the sensing information. The code uses the maximum constrains for acceleration and speed for every step of the simulator to ensure we are not violating the bounds. It also has a preference to stay in the center lane, although there's some experimentation for lane keeping.
 
 ## Path generation
 A path is finally generated with the information from sensing and behavior by using splines. During lines `420-458` a few waypoints are used to generate the spline in `470`. In order to match speed with spline trajectory, the spline X axis is divided in steps that will be traversed at the setup speed. Like this:
@@ -22,13 +22,11 @@ Technically we should travel the norm of the spline to figure out the distance b
 
 ## Video
 Here's a video of the current implemenation at work.
- 
-<a href="http://www.youtube.com/watch?feature=player_embedded&v=https://youtu.be/ltdXpPOkD3E
-" target="_blank"><img src="http://img.youtube.com/vi/https://youtu.be/ltdXpPOkD3E/0.jpg" 
-alt="" width="240" height="180" border="10" /></a>
+
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/ltdXpPOkD3E/0.jpg)](https://www.youtube.com/watch?v=ltdXpPOkD3E)
 
 
-### Alternative implementations, further improments.
+### Alternative implementations, further improvements.
 - More optimized lane changing. There's an alternative implementation in the `nextgen` branch that implements change lanes using cost functions through previous simulation of every path before choosing a state.
 - Better jerk minimizing trajectories. Current implementation uses a spline to draw the shape of the path. It's good enough to meet the rubric criteria. We could also use, jerk minimizing trajectories that would guarantee the imposed bounds.
 
